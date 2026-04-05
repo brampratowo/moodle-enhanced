@@ -1,0 +1,36 @@
+# Docker Compose - Database Moodle (MariaDB)
+# Kredensial dari .env (MYSQL_ROOT_PASSWORD, DB_NAME, DB_USER, DB_PASSWORD).
+
+services:
+  db:
+    image: mariadb:10.11
+    container_name: moodle-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-file-per-table=1
+      - --wait-timeout=28800
+      - --max_allowed_packet=64M
+    volumes:
+      - ./data/mariadb:/var/lib/mysql
+      - ./config/mariadb:/etc/mysql/conf.d
+    ports:
+      - "3306:3306"
+    networks:
+      - docker_network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  docker_network:
+    external: true

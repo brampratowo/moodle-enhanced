@@ -1,0 +1,14 @@
+services:
+  redis:
+    image: redis:7
+    container_name: moodle-redis
+    restart: unless-stopped
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./config/redis:/usr/local/etc/redis
+    networks:
+      - docker_network
+
+networks:
+  docker_network:
+    external: true

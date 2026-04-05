@@ -1,0 +1,29 @@
+.env
+.env.local
+.env.*.local
+
+# Runtime data
+moodledata/
+
+# Generated Moodle source (downloaded by script)
+moodle/
+
+# Data volume Docker (MariaDB, MinIO, …)
+data/
+
+# Konfigurasi lokal (berkas *.example di config/ tetap di repo)
+config/mariadb/my.cnf
+config/redis/redis.conf
+config/minio/
+
+# Logs and temporary files
+*.log
+*.tmp
+*.swp
+*.swo
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -1,0 +1,38 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: moodle-app
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT}:80"
+    volumes:
+      - ${MOODLE_SOURCE_PATH}:/var/www/html
+      - ${MOODLEDATA_PATH}:/var/www/moodledata
+    networks:
+      - docker_network
+
+  cron:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: moodle-cron
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    command: >
+      bash -lc "while true; do
+      php /var/www/html/admin/cli/cron.php;
+      sleep 60;
+      done"
+    volumes:
+      - ${MOODLE_SOURCE_PATH}:/var/www/html
+      - ${MOODLEDATA_PATH}:/var/www/moodledata
+    networks:
+      - docker_network
+
+networks:
+  docker_network:
+    external: true
