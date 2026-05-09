@@ -45,6 +45,12 @@ global \$CFG;
 \$CFG->admin = 'admin';
 \$CFG->directorypermissions = 02777;
 
+\$CFG->session_handler_class = '\\core\\session\\redis';
+\$CFG->session_redis_host = '${REDIS_HOST}';
+\$CFG->session_redis_port = ${REDIS_PORT};
+\$CFG->session_redis_database = ${REDIS_DATABASE};
+\$CFG->session_redis_prefix = '${REDIS_PREFIX}';
+
 require_once(__DIR__ . '/lib/setup.php');
 EOF
 }

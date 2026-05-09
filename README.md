@@ -92,7 +92,31 @@ INSTALL_COMPOSE_FILES=docker-compose-moodle.yml:docker-compose-mariadb.yml:docke
 - Redis memakai **`config/redis/redis.conf`**; jika belum ada, skrip menyalin dari `redis.conf.example` seperti MariaDB.
 - MinIO memakai **`data/minio`** dan **`config/minio`** (folder dibuat otomatis saat instalasi stack ber-MinIO). Kredensial root: **`MINIO_ROOT_USER`** dan **`MINIO_ROOT_PASSWORD`** di `.env`.
 
-## MinIO dan plugin ObjectFS (`tool_objectfs`) pada Docker host yang sama
+## MinIO dan plugin ObjectFS (`tool_objectfs`)
+
+### MinIO pada server/host berbeda dengan Moodle
+
+Jika **MinIO** dan Moodle (beserta plugin **`tool_objectfs`**) tidak berada di stack atau host Docker yang sama—misalnya MinIO eksternal, IP publik lain, atau layanan yang sudah bisa di-resolve lewat DNS—biasanya Anda **tidak perlu patch** sumber plugin seperti pada skenario satu-host di bawah.
+
+Langsung aktifkan penyimpanan S3 di **`config.php`**, sesuaikan kredensial, nama bucket, host, dan URL:
+
+```php
+$CFG->alternative_file_system_class = '\tool_objectfs\s3_file_system';
+$CFG->forced_plugin_settings['tool_objectfs'] = [
+    'filesystem' => '\tool_objectfs\s3_file_system',
+    's3_key' => '...',
+    's3_secret' => '...',
+    's3_bucket' => 'nama-bucket-minio',
+    's3_region' => 'us-east-1',
+    's3_base_url' => 'http://IP-ATAU-HOST:9000',
+    's3_use_path_style_endpoint' => 1,
+    'key_prefix' => 'filedir/',
+];
+```
+
+Ganti `s3_key` / `s3_secret` dengan access key MinIO, **`s3_bucket`** dengan **nama bucket** MinIO Anda (nilai seperti `host:9000` bukan nama bucket; host endpoint hanya **`s3_base_url`**), dan **`s3_base_url`** dengan **`http://…:9000`** yang **benar-benar terjangkau dari Moodle**, misalnya IP publik/private server MinIO lain, atau hostname internal jika Moodle mengenalinya dari container.
+
+### MinIO pada Docker host yang sama dengan Moodle
 
 Jika Anda menjalankan **MinIO** di stack Docker **yang sama** dengan Moodle (misalnya lewat `docker-compose-minio.yml` dan jaringan `docker_network`), lalu memakai plugin **ObjectFS** dengan penyimpanan S3-kompatibel menuju MinIO:
 
