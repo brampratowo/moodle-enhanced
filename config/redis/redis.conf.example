@@ -1,17 +1,23 @@
 bind 0.0.0.0
 port 6379
 
-# memory limit
-maxmemory 1gb
+# memory
+maxmemory 2gb
 maxmemory-policy allkeys-lru
 
-# disable disk persistence (cache only)
+# persistence off
 save ""
 appendonly no
 
-# performance
+# docker
+daemonize no
+
+# networking
 tcp-keepalive 60
 timeout 0
+
+# logging
+loglevel notice
 
 # security
 protected-mode no
