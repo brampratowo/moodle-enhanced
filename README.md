@@ -31,7 +31,7 @@ Dari folder project:
 ```bash
 cd /path/ke/waskita-installer
 cp .env.example .env
-# Edit .env (wajib simpan file setelah mengubah)
+# Edit .env (wajib simpan file setelah mengubah; urutan kunci sama dengan template — lihat juga bagian Parameter Penting .env)
 
 # MariaDB + Redis: skrip instalasi menyalin *.example -> my.cnf / redis.conf jika belum ada;
 # edit config/mariadb/my.cnf dan config/redis/redis.conf sesuai server bila perlu.
@@ -63,33 +63,42 @@ INSTALL_COMPOSE_FILES=docker-compose-moodle.yml:docker-compose-mariadb.yml:docke
 - Skrip **`install-moodle-mariadb-redis.sh`** dan **`install-moodle-mariadb-redis-minio.sh`** mengatur `INSTALL_COMPOSE_FILES` untuk Anda, lalu menjalankan `install.sh`.
 - **`install.sh`** saja memakai default `docker-compose-moodle.yml` (hanya Moodle; database harus sudah tersedia dan `DB_HOST` di `.env` menunjuk ke host yang bisa dijangkau dari container).
 
-**Penting:** isi **`INSTALL_COMPOSE_FILES` yang sama di `.env`** agar `./scripts/up.sh`, `./scripts/down.sh`, dan `./scripts/logs.sh` memanipulasi stack yang sama dengan yang Anda instal. Jika tidak diisi, skrip operasional itu hanya memakai `docker-compose-moodle.yml`.
+**Penting:** isi **`INSTALL_COMPOSE_FILES` yang sama di `.env`** agar `./scripts/up.sh`, `./scripts/down.sh`, dan `./scripts/logs.sh` memanipulasi stack yang sama dengan yang Anda instal. Jika tidak diisi, skrip operasional itu hanya memakai `docker-compose-moodle.yml`. Di **`.env.example`**, **`DOCKER_NETWORK_NAME`** (baris opsional yang dikomentari) berada tepat **sebelum** blok **`INSTALL_COMPOSE_FILES`**.
 
 ## Parameter Penting `.env`
 
+Urutan bullet di bawah menyamai **`.env.example`** dari atas ke bawah: Moodle → MariaDB → Redis → MinIO → path mount → **`MOODLE_CONFIG_SKIP_SYNC`** (opsional) → **`DOCKER_NETWORK_NAME`** → **`INSTALL_COMPOSE_FILES`**.
+
 - `MOODLE_SERIES` — contoh: `501` (paket resmi dari `packaging.moodle.org`)
-- `MOODLE_DOWNLOAD_URL` — opsional, override URL paket resmi
+- `MOODLE_DOWNLOAD_URL` — opsional (baris bisa dikomentari di `.env`), override URL paket resmi
 - `APP_PORT` — default: `8080`
 - `APP_HOST` — default: `localhost` (ubah ke IP/domain jika akses dari mesin lain)
 - `DB_HOST` — host database dari sudut pandang **container Moodle** (contoh `moodle-db` jika memakai `docker-compose-mariadb.yml` pada jaringan yang sama)
 - `DB_PORT` — default: `3306`
 - `DB_TYPE` — default: `mariadb`
 - `DB_PREFIX` — default: `mdl_`
-- `DB_NAME`, `DB_USER`, `DB_PASSWORD` — dipakai Moodle dan (jika memakai compose MariaDB) inisialisasi database di container
-- `MYSQL_ROOT_PASSWORD` — sandi root MariaDB di container (wajib ada jika memakai `docker-compose-mariadb.yml`)
-- `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` — akun root MinIO (wajib diisi jika memakai `docker-compose-minio.yml`)
 - `PERMISSION_MODE` — `compat` (longgar), atau `prod` / `secure` (lebih ketat)
 - `WWW_DATA_UID` / `WWW_DATA_GID` — default `33` (`www-data`)
+- `MYSQL_ROOT_PASSWORD` — sandi root MariaDB di container (wajib ada jika memakai `docker-compose-mariadb.yml`)
+- `DB_NAME`, `DB_USER`, `DB_PASSWORD` — dipakai Moodle dan (jika memakai compose MariaDB) inisialisasi database di container
+- `REDIS_HOST` — host Redis dari sudut pandang **container Moodle** (contoh `moodle-redis` jika memakai `docker-compose-redis.yml` pada jaringan yang sama)
+- `REDIS_PORT` — port Redis, biasanya `6379`
+- `REDIS_DATABASE` — indeks logical database Redis (integer, biasanya `0`) untuk penyimpanan sesi
+- `REDIS_PREFIX` — awalan kunci sesi di Redis agar tidak bentrok dengan aplikasi lain yang memakai instance yang sama (contoh `sess_`)
+- `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` — akun root MinIO (wajib diisi jika memakai `docker-compose-minio.yml`)
 - `MOODLE_SOURCE_PATH`, `MOODLEDATA_PATH`, `MOODLE_CONFIG_PATH` — mount source Moodle, moodledata, dan lokasi `config.php`
 - `MOODLE_CONFIG_SKIP_SYNC=1` — jangan timpa `config.php` saat menjalankan `install.sh`
+- `DOCKER_NETWORK_NAME` — opsional (bisa dikomentari); default `docker_network`
 - `INSTALL_COMPOSE_FILES` — daftar berkas compose (pemisah `:`), selaras dengan stack instalasi
-- `DOCKER_NETWORK_NAME` — opsional; default `docker_network`
 
 ## MariaDB & Redis dari Compose
 
-- Data MariaDB ada di **`data/mariadb`**. Konfigurasi aktif: **`config/mariadb/my.cnf`**. Jika belum ada, skrip instalasi menyalin otomatis dari `my.cnf.example`; Anda tetap boleh menyalin manual dan mengedit sebelum atau sesudah instalasi.
-- **`DB_NAME` / `DB_USER` / `DB_PASSWORD`** di `.env` dipakai bersama oleh `config.php` Moodle dan inisialisasi MariaDB di compose; **`MYSQL_ROOT_PASSWORD`** hanya untuk akun root di container database.
+Penjelasan di bawah mengikuti blok yang sama seperti di **`.env.example`**: MariaDB dulu, lalu Redis, lalu MinIO.
+
+- Data MariaDB ada di **`data/mariadb`**. Konfigurasi aktif: **`config/mariadb/my.cnf`**. Jika belum ada, skrip instalasi menyalin otomatis dari `my.cnf.example`; Anda tetap boleh menyalin manual dan mengedit sebelum atau sesudah instalasi. Variabel **`DB_HOST`**, **`DB_PORT`**, **`DB_TYPE`**, **`DB_PREFIX`**, **`PERMISSION_MODE`**, **`WWW_DATA_UID`**, **`WWW_DATA_GID`** (dibahas di atas) dipakai skrip seperti **`.env`**: koneksi dan mode izin/pemilik untuk `install.sh`/compose.
+- **`MYSQL_ROOT_PASSWORD`** hanya untuk akun root MariaDB **di container database** (compose MariaDB); **`DB_NAME`**, **`DB_USER`**, dan **`DB_PASSWORD`** dipakai Moodle lewat **`config.php`** dan bersama untuk inisialisasi database aplikasi di container.
 - Redis memakai **`config/redis/redis.conf`**; jika belum ada, skrip menyalin dari `redis.conf.example` seperti MariaDB.
+- Variabel **`REDIS_HOST`**, **`REDIS_PORT`**, **`REDIS_DATABASE`**, dan **`REDIS_PREFIX`** di `.env` dipakai saat **`install.sh`** menulis `config.php`: Moodle diatur memakai handler sesi Redis (`\core\session\redis`) dengan nilai tersebut (`session_redis_*`). Pastikan host/port benar-benar terjangkau dari container Moodle; jika Anda **tidak** menjalankan Redis, ubah `config.php` atau sesuaikan stack agar sesi tidak mengarah ke layanan yang tidak ada.
 - MinIO memakai **`data/minio`** dan **`config/minio`** (folder dibuat otomatis saat instalasi stack ber-MinIO). Kredensial root: **`MINIO_ROOT_USER`** dan **`MINIO_ROOT_PASSWORD`** di `.env`.
 
 ## MinIO dan plugin ObjectFS (`tool_objectfs`)
@@ -178,6 +187,7 @@ Dengan patch di (1)–(2), nilai `s3_use_path_style_endpoint` di (3) benar-benar
 
 ## Catatan
 
+- Urutan utama variabel dokumentasi ada di bagian **Parameter Penting `.env`** dan mencerminkan **`.env.example`** (dari blok Moodle hingga blok compose di bawah file).
 - `config.php` di host ditulis ulang dari `.env` setiap kali `install.sh` dijalankan, kecuali `MOODLE_CONFIG_SKIP_SYNC=1`.
 - Unduh source Moodle dilakukan **sebelum** penulisan `config.php`, agar `config.php` tidak terhapus saat folder `moodle` dikosongkan untuk ekstrak arsip.
 - `moodle-cron` menjalankan `admin/cli/cron.php` setiap 60 detik.
