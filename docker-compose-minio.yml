@@ -12,7 +12,6 @@ services:
       - 9001:9001 # WebUI
     volumes:
       - ./data/minio:/minio_data
-      - ./config/minio:/root/.minio
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
