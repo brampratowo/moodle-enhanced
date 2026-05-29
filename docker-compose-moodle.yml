@@ -24,7 +24,7 @@ services:
         condition: service_started
     command: >
       bash -lc "while true; do
-      php /var/www/html/admin/cli/cron.php;
+      runuser -u www-data -- php /var/www/html/admin/cli/cron.php;
       sleep 60;
       done"
     volumes:

@@ -150,23 +150,32 @@ else
   write_moodle_config_php "${MOODLE_CONFIG_HOST_PATH}"
 fi
 
-if [[ "${PERMISSION_MODE}" = "prod" || "${PERMISSION_MODE}" = "secure" ]]; then
-  echo "Mode permission: ${PERMISSION_MODE} (lebih aman untuk server)."
-  if [ -d "${MOODLE_DIR}/public" ]; then
-    chown -R "${WWW_DATA_UID}:${WWW_DATA_GID}" "${MOODLE_DIR}/public" 2>/dev/null || true
-    chmod -R 775 "${MOODLE_DIR}/public"
-  fi
-  chown -R "${WWW_DATA_UID}:${WWW_DATA_GID}" "${MOODLEDATA_HOST_PATH}" 2>/dev/null || true
-  chown "${WWW_DATA_UID}:${WWW_DATA_GID}" "${MOODLE_CONFIG_HOST_PATH}" 2>/dev/null || true
-  chmod -R 770 "${MOODLEDATA_HOST_PATH}"
-  chmod 660 "${MOODLE_CONFIG_HOST_PATH}"
-else
+apply_compat_permissions() {
   echo "Mode permission: compat (paling longgar untuk kompatibilitas)."
-  chmod -R 777 "${MOODLEDATA_HOST_PATH}"
-  chmod 666 "${MOODLE_CONFIG_HOST_PATH}"
-  if [ -d "${MOODLE_DIR}/public" ]; then
-    chmod -R 777 "${MOODLE_DIR}/public"
+  chmod -R 777 "${MOODLEDATA_HOST_PATH}" 2>/dev/null || true
+  chmod 666 "${MOODLE_CONFIG_HOST_PATH}" 2>/dev/null || true
+}
+
+apply_prod_permissions_docker() {
+  local container="${1:-moodle-app}"
+  local host_uid host_gid
+  if ! docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "${container}"; then
+    return 1
   fi
+  host_uid="$(id -u)"
+  host_gid="$(id -g)"
+  echo "Menerapkan permission ${PERMISSION_MODE} via container ${container}..."
+  docker exec -u root "${container}" chown -R "${host_uid}:${host_gid}" /var/www/html
+  docker exec -u root "${container}" chown www-data:www-data /var/www/html/config.php
+  docker exec -u root "${container}" chown -R www-data:www-data /var/www/moodledata
+  docker exec -u root "${container}" chmod 660 /var/www/html/config.php
+  docker exec -u root "${container}" chmod -R 770 /var/www/moodledata
+}
+
+if [[ "${PERMISSION_MODE}" = "prod" || "${PERMISSION_MODE}" = "secure" ]]; then
+  echo "Mode permission: ${PERMISSION_MODE} (config.php + moodledata; source Moodle tidak diubah)."
+else
+  apply_compat_permissions
 fi
 
 build_compose_args "${ROOT_DIR}"
@@ -180,6 +189,17 @@ docker compose "${COMPOSE_ARGS[@]}" build app cron
 
 echo "Menjalankan stack..."
 docker compose "${COMPOSE_ARGS[@]}" up -d
+
+if [[ "${PERMISSION_MODE}" = "prod" || "${PERMISSION_MODE}" = "secure" ]]; then
+  if ! apply_prod_permissions_docker moodle-app; then
+    echo "Peringatan: permission prod belum diterapkan (container moodle-app belum siap)."
+    echo "  Jalankan setelah stack jalan:"
+    echo "  docker exec -u root moodle-app chown www-data:www-data /var/www/html/config.php"
+    echo "  docker exec -u root moodle-app chown -R www-data:www-data /var/www/moodledata"
+    echo "  docker exec -u root moodle-app chmod 660 /var/www/html/config.php"
+    echo "  docker exec -u root moodle-app chmod -R 770 /var/www/moodledata"
+  fi
+fi
 
 echo
 echo "Selesai. Lanjutkan instalasi Moodle via browser:"
