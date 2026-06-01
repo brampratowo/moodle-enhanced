@@ -24,50 +24,51 @@ Folder ini berisi skrip dan berkas untuk menginstal Moodle dari nol hingga stack
 
 Semua berkas compose memakai jaringan eksternal **`docker_network`**. Skrip instalasi akan membuatnya otomatis jika belum ada.
 
-## Cara Pakai Cepat
+## Clone Repository
 
-Dari folder project:
+Salin project ke mesin Anda dengan **Git**. Pilih salah satu metode di bawah.
+
+**SSH** (disarankan jika kunci SSH GitHub sudah terpasang):
 
 ```bash
-cd /path/ke/waskita-installer
+git clone git@github.com:brampratowo/moodle-enhanced.git
+cd moodle-enhanced
+```
+
+**HTTPS** (tanpa kunci SSH; GitHub dapat meminta token personal saat push):
+
+```bash
+git clone https://github.com/brampratowo/moodle-enhanced.git
+cd moodle-enhanced
+```
+
+Untuk branch atau tag tertentu, tambahkan `-b <nama-branch>` setelah `git clone`.
+
+## Cara Pakai Cepat
+
+```bash
+cd moodle-enhanced
 cp .env.example .env
-# Edit .env (wajib simpan file setelah mengubah; urutan kunci sama dengan template — lihat juga bagian Parameter Penting .env)
-
-# MariaDB + Redis: skrip instalasi menyalin *.example -> my.cnf / redis.conf jika belum ada;
-# edit config/mariadb/my.cnf dan config/redis/redis.conf sesuai server bila perlu.
-
-# Pilih salah satu sesuai kebutuhan server:
-./scripts/install.sh
-# atau satu server: Moodle + MariaDB + Redis
-./scripts/install-moodle-mariadb-redis.sh
-# atau ditambah MinIO
-./scripts/install-moodle-mariadb-redis-minio.sh
+# Edit .env (sand DB, port, dll. — lihat Parameter Penting .env)
 ```
 
-Setelah sukses, buka:
+Pilih **satu** skrip instalasi sesuai stack yang dibutuhkan:
 
-`http://<APP_HOST>:<APP_PORT>`
+| Skrip | Stack |
+|-------|--------|
+| `./scripts/install-moodle-mariadb-redis.sh` | Moodle + MariaDB + Redis |
+| `./scripts/install-moodle-mariadb-redis-minio.sh` | di atas + MinIO |
+| `./scripts/install.sh` | Moodle saja (database/Redis di luar Docker; atur `DB_HOST` dll. di `.env`) |
 
-Lanjutkan wizard instalasi Moodle di browser. Nilai database di wizard harus konsisten dengan `.env` (dan dengan `docker-compose-mariadb.yml` jika Anda memakai MariaDB dari compose).
+Skrip wrapper MariaDB/Redis/MinIO menyalin `*.example` → `my.cnf` / `redis.conf` jika belum ada. Sesuaikan `config/mariadb/my.cnf` dan `config/redis/redis.conf` bila perlu.
 
-## Stack Compose & `INSTALL_COMPOSE_FILES`
+Setelah sukses, buka `http://<APP_HOST>:<APP_PORT>` dan lanjutkan wizard Moodle di browser. Nilai database di wizard harus sama dengan `.env`.
 
-Beberapa berkas compose digabung dengan perintah `docker compose -f ... -f ...`. Daftar berkas diatur lewat variabel lingkungan **`INSTALL_COMPOSE_FILES`**, dipisah **titik dua** (`:`), urutan bebas asal semua path relatif ke root project.
-
-Contoh:
-
-```env
-INSTALL_COMPOSE_FILES=docker-compose-moodle.yml:docker-compose-mariadb.yml:docker-compose-redis.yml
-```
-
-- Skrip **`install-moodle-mariadb-redis.sh`** dan **`install-moodle-mariadb-redis-minio.sh`** mengatur `INSTALL_COMPOSE_FILES` untuk Anda, lalu menjalankan `install.sh`.
-- **`install.sh`** saja memakai default `docker-compose-moodle.yml` (hanya Moodle; database harus sudah tersedia dan `DB_HOST` di `.env` menunjuk ke host yang bisa dijangkau dari container).
-
-**Penting:** isi **`INSTALL_COMPOSE_FILES` yang sama di `.env`** agar `./scripts/up.sh`, `./scripts/down.sh`, dan `./scripts/logs.sh` memanipulasi stack yang sama dengan yang Anda instal. Jika tidak diisi, skrip operasional itu hanya memakai `docker-compose-moodle.yml`. Di **`.env.example`**, **`DOCKER_NETWORK_NAME`** (baris opsional yang dikomentari) berada tepat **sebelum** blok **`INSTALL_COMPOSE_FILES`**.
+**Operasional harian:** uncomment baris `INSTALL_COMPOSE_FILES` yang sesuai di `.env` (contoh ada di `.env.example`) agar `up` / `down` / `logs` mengelola stack yang sama dengan instalasi. Tanpa itu, skrip operasional hanya memakai `docker-compose-moodle.yml`.
 
 ## Parameter Penting `.env`
 
-Urutan bullet di bawah menyamai **`.env.example`** dari atas ke bawah: Moodle → MariaDB → Redis → MinIO → path mount → **`MOODLE_CONFIG_SKIP_SYNC`** (opsional) → **`DOCKER_NETWORK_NAME`** → **`INSTALL_COMPOSE_FILES`**.
+Urutan di bawah mengikuti **`.env.example`** (Moodle → MariaDB → Redis → MinIO → path mount → opsional compose).
 
 - `MOODLE_SERIES` — contoh: `501` (paket resmi dari `packaging.moodle.org`)
 - `MOODLE_DOWNLOAD_URL` — opsional (baris bisa dikomentari di `.env`), override URL paket resmi
@@ -88,8 +89,8 @@ Urutan bullet di bawah menyamai **`.env.example`** dari atas ke bawah: Moodle �
 - `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` — akun root MinIO (wajib diisi jika memakai `docker-compose-minio.yml`)
 - `MOODLE_SOURCE_PATH`, `MOODLEDATA_PATH`, `MOODLE_CONFIG_PATH` — mount source Moodle, moodledata, dan lokasi `config.php`
 - `MOODLE_CONFIG_SKIP_SYNC=1` — jangan timpa `config.php` saat menjalankan `install.sh`
-- `DOCKER_NETWORK_NAME` — opsional (bisa dikomentari); default `docker_network`
-- `INSTALL_COMPOSE_FILES` — daftar berkas compose (pemisah `:`), selaras dengan stack instalasi
+- `DOCKER_NETWORK_NAME` — opsional; default `docker_network`
+- `INSTALL_COMPOSE_FILES` — uncomment di `.env` setelah instalasi agar `up`/`down`/`logs` selaras dengan skrip yang dipakai (lihat `.env.example`)
 
 ## MariaDB & Redis dari Compose
 
@@ -103,11 +104,11 @@ Penjelasan di bawah mengikuti blok yang sama seperti di **`.env.example`**: Mari
 
 ## MinIO dan plugin ObjectFS (`tool_objectfs`)
 
-### MinIO pada server/host berbeda dengan Moodle
+### MinIO pada Docker host yang berbeda dengan Moodle
 
-Jika **MinIO** dan Moodle (beserta plugin **`tool_objectfs`**) tidak berada di stack atau host Docker yang sama—misalnya MinIO eksternal, IP publik lain, atau layanan yang sudah bisa di-resolve lewat DNS—biasanya Anda **tidak perlu patch** sumber plugin seperti pada skenario satu-host di bawah.
+MinIO berjalan di **mesin Docker lain** (bukan stack `docker-compose-minio.yml` di server Moodle). Moodle tetap di container; MinIO di container/server terpisah yang bisa dijangkau lewat jaringan (IP privat, VPN, atau hostname DNS).
 
-Langsung aktifkan penyimpanan S3 di **`config.php`**, sesuaikan kredensial, nama bucket, host, dan URL:
+**Tidak perlu patch plugin** (poin 1 dan 2 di bawah). Cukup atur **`config.php`** — setara poin 3, dengan endpoint yang **terjangkau dari container Moodle**, bukan nama layanan Docker internal (`moodle-minio` hanya valid di host yang sama).
 
 ```php
 $CFG->alternative_file_system_class = '\tool_objectfs\s3_file_system';
@@ -117,13 +118,18 @@ $CFG->forced_plugin_settings['tool_objectfs'] = [
     's3_secret' => '...',
     's3_bucket' => 'nama-bucket-minio',
     's3_region' => 'us-east-1',
-    's3_base_url' => 'http://IP-ATAU-HOST:9000',
+    's3_base_url' => 'http://IP-ATAU-HOST-SERVER-MINIO:9000',
     's3_use_path_style_endpoint' => 1,
     'key_prefix' => 'filedir/',
 ];
 ```
 
-Ganti `s3_key` / `s3_secret` dengan access key MinIO, **`s3_bucket`** dengan **nama bucket** MinIO Anda (nilai seperti `host:9000` bukan nama bucket; host endpoint hanya **`s3_base_url`**), dan **`s3_base_url`** dengan **`http://…:9000`** yang **benar-benar terjangkau dari Moodle**, misalnya IP publik/private server MinIO lain, atau hostname internal jika Moodle mengenalinya dari container.
+- **`s3_base_url`**: IP atau hostname **server tempat MinIO Docker berjalan**, misalnya `http://192.168.1.20:9000` atau `http://minio.internal:9000`. Uji dari container Moodle (`curl http://…:9000/minio/health/live`).
+- **`s3_bucket`**: nama bucket di MinIO (bukan host atau port).
+- Instalasi Moodle: pakai `./scripts/install-moodle-mariadb-redis.sh` (tanpa MinIO di stack yang sama), atau `./scripts/install.sh` jika layanan lain juga eksternal.
+- Buka port **9000** (atau port MinIO Anda) dari server MinIO ke server/container Moodle.
+
+MinIO di luar Docker (bare metal, layanan cloud) mengikuti pola yang sama: endpoint publik/privat yang bisa di-resolve dari Moodle, tanpa patch plugin.
 
 ### MinIO pada Docker host yang sama dengan Moodle
 
@@ -157,7 +163,7 @@ Jika Anda menjalankan **MinIO** di stack Docker **yang sama** dengan Moodle (mis
         $config->key_prefix = '';
 ```
 
-**3. `config.php` (contoh)** — aktifkan path-style dan endpoint MinIO di jaringan Docker yang sama:
+**3. `config.php`** — setelah patch (1)–(2), contoh untuk MinIO di jaringan Docker yang sama:
 
 ```php
 $CFG->alternative_file_system_class = '\tool_objectfs\s3_file_system';
@@ -187,7 +193,7 @@ Dengan patch di (1)–(2), nilai `s3_use_path_style_endpoint` di (3) benar-benar
 
 ## Catatan
 
-- Urutan utama variabel dokumentasi ada di bagian **Parameter Penting `.env`** dan mencerminkan **`.env.example`** (dari blok Moodle hingga blok compose di bawah file).
+- Urutan variabel dokumentasi mengikuti **`.env.example`** (lihat **Parameter Penting `.env`**).
 - `config.php` di host ditulis ulang dari `.env` setiap kali `install.sh` dijalankan, kecuali `MOODLE_CONFIG_SKIP_SYNC=1`.
 - Unduh source Moodle dilakukan **sebelum** penulisan `config.php`, agar `config.php` tidak terhapus saat folder `moodle` dikosongkan untuk ekstrak arsip.
 - `moodle-cron` menjalankan `admin/cli/cron.php` setiap 60 detik.
